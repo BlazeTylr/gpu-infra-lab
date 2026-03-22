@@ -1,0 +1,78 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-operator
+  namespace: argocd
+  # GPU Operator manages the full NVIDIA software stack on Kubernetes:
+  # - Container toolkit (nvidia-container-toolkit)
+  # - Device plugin (exposes nvidia.com/gpu resource to Kubernetes scheduler)
+  # - DCGM Exporter (GPU metrics → Prometheus)
+  # - GFD (GPU Feature Discovery — adds GPU labels to nodes)
+  # Driver management is disabled because the host driver (580.x) is pre-installed.
+spec:
+  project: default
+  source:
+    repoURL: https://helm.ngc.nvidia.com/nvidia
+    chart: gpu-operator
+    # v26.3.0 is the latest stable as of March 2026
+    # Component versions bundled with this release:
+    # - NVIDIA Container Toolkit: v1.17.x
+    # - DCGM Exporter: 4.5.x
+    # - Device Plugin: v0.17.x
+    # Release notes: https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/release-notes.html
+    targetRevision: v26.3.0
+    helm:
+      values: |
+        operator:
+          # K3s uses containerd, not Docker — this configures the runtime accordingly
+          defaultRuntime: containerd
+        driver:
+          enabled: false
+          # Host driver (580.126.09) is pre-installed on gpu-node.
+          # Setting enabled: false tells the Operator not to manage the driver.
+          # If this were true, the Operator would try to install its own driver
+          # and conflict with the existing one.
+        toolkit:
+          enabled: true
+          # The container toolkit allows containers to access the GPU.
+          # This patches containerd config to enable the nvidia runtime.
+        devicePlugin:
+          enabled: true
+          # Exposes nvidia.com/gpu as a schedulable resource in Kubernetes.
+          # Without this, pods cannot request GPU resources.
+        dcgm:
+          enabled: true
+          # DCGM (Data Center GPU Manager) — the underlying GPU monitoring engine.
+        dcgmExporter:
+          enabled: true
+          # Exposes DCGM metrics in Prometheus format on port 9400.
+          # Metrics include: GPU utilisation, memory usage, temperature, power draw.
+        gfd:
+          enabled: true
+          # GPU Feature Discovery — labels nodes with GPU properties.
+          # e.g. nvidia.com/gpu.model=RTX-2060-Super
+        migManager:
+          enabled: false
+          # MIG (Multi-Instance GPU) splits A100/H100 GPUs into smaller instances.
+          # RTX 2060 Super does NOT support MIG — disable it.
+        nodeStatusExporter:
+          enabled: true
+          # Reports GPU Operator component health back to Kubernetes.
+        validator:
+          plugin:
+            env:
+              - name: WITH_WORKLOAD
+                # Skip running a test workload during validation.
+                # Avoids needing a GPU workload just to confirm the install worked.
+                value: "false"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gpu-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # GPU Operator CRDs are large — server-side apply avoids annotation size limits
+      - ServerSideApply=true
