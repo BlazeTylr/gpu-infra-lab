@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ollama
+  namespace: argocd
+  # Ollama: runs large language models on the GPU node.
+  # Serves a quantised 7B model via HTTP API on port 11434.
+  # Scheduled exclusively on gpu-node via nodeSelector: nvidia.com/gpu=true
+  # Requires GPU Operator to be running first — device plugin must be active
+  # so Kubernetes can schedule pods with nvidia.com/gpu resource requests.
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BlazeTylr/gpu-infra-lab.git
+    targetRevision: main
+    path: apps/ollama
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ollama
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

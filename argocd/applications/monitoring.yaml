@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  # Monitoring stack for the GPU cluster:
+  # - Prometheus: scrapes metrics from nodes, K3s, and DCGM Exporter
+  # - Grafana: dashboards for GPU utilisation, memory, temperature, power
+  # - Node Exporter: host-level metrics (CPU, RAM, disk, network)
+  # DCGM Exporter metrics come from the GPU Operator — no separate deployment needed
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/BlazeTylr/gpu-infra-lab.git
+    targetRevision: main
+    # Uses Kustomize to deploy all monitoring components in order
+    path: apps/monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
