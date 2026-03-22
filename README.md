@@ -149,9 +149,9 @@ Llama 3.2 3B (Q4_K_M, ~2GB) fits comfortably within 8GB VRAM.
 
 | Service    | URL                                                         |
 | ---------- | ----------------------------------------------------------- |
-| Grafana    | `http://192.168.1.48:30030`                                 |
-| Prometheus | `http://192.168.1.48:30090`                                 |
-| Ollama API | `http://192.168.1.52:30434`                                 |
+| Grafana    | `http://<controlplane-ip>:30030`                            |
+| Prometheus | `http://<controlplane-ip>:30090`                            |
+| Ollama API | `http://<gpu-node-ip>:30434`                                |
 | ArgoCD UI  | `kubectl port-forward svc/argocd-server -n argocd 8080:443` |
 
 ## Phases
